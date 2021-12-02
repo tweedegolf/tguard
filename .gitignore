@@ -1,0 +1,8 @@
+.idea/
+target/
+frontend/dist/
+frontend/target/
+frontend/node_modules/
+target/
+.env
+analyzer_target/

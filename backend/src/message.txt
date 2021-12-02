@@ -1,0 +1,7 @@
+You received a message from :from
+
+This message is encrypted using IRMA
+
+Visit :url to decrypt and view your message.
+
+You can find more information about IRMA on https://irma.app

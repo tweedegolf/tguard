@@ -1,0 +1,311 @@
+$blue: #4f46e5;
+$green: #caf7d4;
+$red: #fad2d2;
+$gray: #eef1f5;
+$gray-dark: #d1d5db;
+$breakpoint: 540px;
+
+@keyframes spin {
+  0% {
+    transform: rotate(0);
+    animation-timing-function: cubic-bezier(0.55, 0.055, 0.675, 0.19);
+  }
+  50% {
+    transform: rotate(900deg);
+    animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+  }
+  100% {
+    transform: rotate(1800deg);
+  }
+}
+
+html {
+  font-size: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+h1 {
+  background: url('/static/shield.svg') no-repeat center left;
+  background-size: contain;
+  height: 5rem;
+  line-height: 5rem;
+  font-size: 4.5rem;
+  padding-left: 6rem;
+  margin: 0 0 1rem 0;
+
+  @media (max-width: $breakpoint) {
+    height: 2rem;
+    line-height: 2rem;
+    font-size: 2rem;
+    padding-left: 2.5rem;
+  }
+}
+
+body {
+  background: $gray;
+  font-family: 'Arial', serif;
+  padding: 2rem;
+  margin: 0;
+
+  @media (max-width: $breakpoint) {
+    background: white;
+    padding: 0;
+  }
+
+  a {
+    color: $blue;
+  }
+}
+
+.select {
+  .selected {
+    background: $blue;
+    color: white;
+  }
+
+  button {
+    background: $gray;
+    color: black;
+  }
+}
+
+main {
+  margin: 2rem auto;
+  max-width: 50rem;
+  background: white;
+  padding: 2rem;
+  font-size: 1.2rem;
+  position: relative;
+
+  @media (max-width: $breakpoint) {
+    margin: 0;
+    padding: 1rem;
+    width: 100%;
+  }
+
+  form {
+    &::before {
+      content: ' ';
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba($green, 0.3);
+      transition: transform 2s;
+      transform-origin: left;
+      transform: scale(0, 1);
+    }
+  
+    &.encrypting::before {
+      transform: scale(1, 1);
+    }
+  
+    &.sent::before {
+      transform: none;
+      transition: none;
+    }  
+  }
+
+  label, dt {
+    display: block;
+    margin-top: 1rem;
+    font-weight: 700;
+  }
+
+  .alert {
+    padding: 1rem;
+    margin: 2rem 0;
+    transition: all 500ms;
+
+    &.empty {
+      background-color: $gray;
+    }
+
+    &.success {
+      background-color: $green;
+    }
+
+    &.error {
+      background-color: $red;
+    }
+  }
+}
+
+input:not([type=checkbox]), textarea, dd, select {
+  display: block;
+  width: 100%;
+  background: white;
+  border: 1px solid $gray-dark;
+  font-family: 'Arvo', serif;
+  margin: 0.5rem 0;
+  font-size: 1.2rem;
+  padding: 0.5rem;
+  font-weight: 400;
+  font-family: 'Arial', serif;
+
+  &[disabled] {
+    background-color: $gray;
+    color: #666;
+  }
+
+  pre {
+    font-family: 'Arial', serif;
+    margin: 0;
+
+    &:empty {
+      display: inline-block;
+      position: relative;
+      width: 4rem;
+      height: 4rem;
+
+      &::after {
+        content: " ";
+        display: block;
+        width: 100%;
+        height: 100%;
+        background: url('/static/shield.svg') no-repeat center left;
+        background-size: contain;
+        box-sizing: border-box;
+        animation: spin 2s infinite;
+        opacity: 0.1;
+      }
+    }
+  }
+}
+
+dd {
+  background: $gray;
+  min-height: 2rem;
+}
+
+textarea {
+  height: 8rem;
+}
+
+button {
+  background: $blue;
+  color: white;
+  padding: 0.5rem 1rem;
+  margin: 0.5rem 0;
+  border: 0;
+  font-size: 1.2rem;
+  font-weight: 400;
+  cursor: pointer;
+  position: relative;
+  z-index: 10;
+
+  &[type=submit] {
+    margin-top: 1rem;
+  }
+}
+
+.attributes,
+.files {
+  width: 100%;
+  border-spacing: 0;
+
+  td:first-child {
+    min-width: 310px;
+  }
+
+  td:not(:last-child),
+  th:not(:last-child) {
+    padding-right: 0.75rem;
+  }
+
+  td.actions {
+    padding-right: 0;
+    width: 38px;
+  }
+
+  th, td {
+    text-align: left;
+
+    & > div {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+  }
+
+  label {
+    &.checkbox-label {
+      font-weight: normal;
+      color: #666;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+    }
+  }
+}
+
+.files {
+  .button {
+    display: block;
+    padding: 0.5rem 1rem;
+    text-decoration: none;
+  }
+
+  .outlined {
+    color: $blue;
+    background: transparent;
+    border: 1px solid $blue;
+  }
+
+  .filename {
+    display: block;
+    width: 100%;
+    border: 1px solid $gray-dark;
+    font-family: 'Arvo', serif;
+    margin: 0.5rem 0;
+    font-size: 1.2rem;
+    padding: 0.5rem;
+    font-weight: 400;
+    font-family: 'Arial', serif;
+    background: $gray;
+    min-height: 2rem;
+  }
+}
+
+.attribute-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+
+  button {
+    color: $blue;
+    background: transparent;
+    border: 1px solid $blue;
+  }
+
+  label {
+    font-weight: normal;
+    color: #666;
+    font-size: 0.9rem;
+    margin-top: 0;
+
+    button {
+      margin-left: 0.5rem;
+    }
+  }
+}
+
+button {
+  &.delete {
+    color: darken($red, 40%);
+    background: transparent;
+    border: 1px solid darken($red, 40%);
+    padding: 0.5rem 0.75rem;
+
+    &.small {
+      font-size: 0.9rem;
+      margin: 0;
+      padding: 0 0.25rem;
+    }
+  }
+}

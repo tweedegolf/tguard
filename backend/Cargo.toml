@@ -1,0 +1,36 @@
+[package]
+name = "tguard"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-trait = "0.1.51"
+common = { path = "../common" }
+cloud-storage = { version = "0.10", features = ["global-client"] }
+dotenv = "0.15.0"
+env_logger = "0.9.0"
+lettre = { version = "0.10.0-rc.4", features = ["builder"] }
+log = "0.4.14"
+postcard = "0.5.1"
+postgres = { version = "0.19.1", features = ["with-serde_json-1"] }
+rand = "0.8.4"
+reqwest = { version = "0.11.5", features = ["json"] }
+rocket = { version = "0.5.0-rc.1", features = ["json"] }
+sentryrs = { version = "0.23.0", package = "sentry" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.66"
+thiserror = "1.0.30"
+validator = { version = "0.12", features = ["derive"] }
+
+[dependencies.rocket_sync_db_pools]
+version = "0.1.0-rc.1"
+default-features = false
+features = ["postgres_pool"]
+
+[dev-dependencies]
+cloud-storage = { version = "0.10", features = ["global-client", "sync"] }
+figment = { version = "0.10.5", features = ["env", "toml", "json"] }
+reqwest = { version = "0.11.5", features = ["json", "blocking"] }
+serial_test = "0.5.1"

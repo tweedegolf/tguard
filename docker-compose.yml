@@ -1,0 +1,82 @@
+version: '3.7'
+services:
+    frontend:
+        build:
+            context: .
+            dockerfile: ./docker/rust.Dockerfile
+        tty: true
+        volumes:
+          - "./common:/app/common"
+          - "./frontend:/app/frontend"
+        expose: [8080]
+        command: [trunk, serve, --proxy-backend=http://backend:9000/api/]
+        working_dir: /app/frontend
+        environment:
+            TRUNK_SERVE_NO_AUTORELOAD: "true"
+            NODE_ENV: development
+        networks: [default]
+
+    backend:
+        build:
+            context: .
+            dockerfile: ./docker/rust.Dockerfile
+        depends_on: [psql, mailhog]
+        tty: true
+        volumes:
+            - "./common:/app/common"
+            - "./backend:/app/backend"
+        expose: [9000]
+        command: [ "cargo", "watch",  "--watch", "src/", "-x", "run" ]
+        working_dir: /app/backend
+        ports: ["127.0.0.1:8000:8000"]
+        environment:
+            ROCKET_HOST: http://tguard.localhost
+            ROCKET_MAIL_HOST: mailhog
+            ROCKET_MAIL_USER: "tguard@tguard.localhost"
+            ROCKET_FROM_FALLBACK: "tguard@tguard.localhost"
+            ROCKET_MAIL_PORT: 1025
+            ROCKET_ADDRESS: "0.0.0.0"
+            ROCKET_STORAGE_TYPE: "local"
+            ROCKET_STORAGE_LOCATION: "/tmp"
+            ROCKET_MAILGUN_MESSAGE_URL_PREFIX: "https://storage.eu.mailgun.net/v3/"
+            ROCKET_DATABASES: '{db={url="postgres://tguard@psql:5432/tguard"}}'
+            ROCKET_ALLOWED_ATTRIBUTES: '["pbdf.sidn-pbdf.email.email","pbdf.gemeente.address.city","pbdf.gemeente.personalData.over18","pbdf.gemeente.address.houseNumber"]'
+            ROCKET_MAXIMUM_FILE_SIZE: 32768
+            RUST_LOG: debug
+        networks: [default]
+
+    nginx:
+        image: nginx:1.21
+        depends_on: [frontend, backend]
+        volumes:
+            - ".:/app"
+            - "./docker/nginx.conf:/etc/nginx/nginx.conf:ro"
+        environment:
+            TZ: Europe/Amsterdam
+            NGINX_ENTRYPOINT_QUIET_LOGS: 1
+        ports: ["127.0.0.1:80:80"]
+        networks: [default]
+
+    psql:
+        image: postgres:12
+        command: ["postgres", "-c", "log_statement=all", "-c", "max_connections=200"]
+        environment:
+            POSTGRES_USER: tguard
+            POSTGRES_DB: tguard
+            POSTGRES_HOST_AUTH_METHOD: trust
+            TZ: Europe/Amsterdam
+        ports: ["127.0.0.1:5432:5432"]
+        networks: [default]
+
+    mailhog:
+        image: mailhog/mailhog:v1.0.0
+        environment:
+            MH_API_BIND_ADDR: 0.0.0.0:1080
+            MH_UI_BIND_ADDR: 0.0.0.0:1080
+            MH_SMTP_BIND_ADDR: 0.0.0.0:1025
+            TZ: Europe/Amsterdam
+        ports: [ "127.0.0.1:1080:1080" ]
+        networks: [default]
+
+networks:
+    default: ~

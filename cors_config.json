@@ -1,0 +1,8 @@
+[
+	{
+		"origin": ["http://tguard.localhost"],
+		"method": ["GET"],
+		"responseHeader": [],
+		"maxAgeSeconds": 3600
+	}
+]
