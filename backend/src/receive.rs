@@ -10,7 +10,6 @@ struct MailgunAttachment {
     content_type: String,
     name: String,
     url: String,
-    size: u64,
 }
 
 #[derive(Deserialize, Debug)]
@@ -19,8 +18,6 @@ struct MailgunMessage {
     subject: String,
     #[serde(alias = "body-plain")]
     body_plain: String,
-    #[serde(alias = "Message-Id")]
-    message_id: String,
     attachments: Vec<MailgunAttachment>,
 }
 
@@ -31,16 +28,19 @@ pub struct MailgunNotification {
     message_url: String,
 }
 
+#[cfg(debug_assertions)]
 #[derive(Deserialize, Debug)]
 struct MailgunStorage {
     url: String,
 }
 
+#[cfg(debug_assertions)]
 #[derive(Deserialize, Debug)]
 struct MailgunEvent {
     storage: MailgunStorage,
 }
 
+#[cfg(debug_assertions)]
 #[derive(Deserialize, Debug)]
 struct MailgunEvents {
     items: Vec<MailgunEvent>,
@@ -138,6 +138,7 @@ pub async fn new_email(
 
 // This is probably not the best long term solution, but for testing now is still reasonable
 // Long term we might want this to be driven from a notify on the individual events.
+#[cfg(debug_assertions)]
 #[get("/api/poll")]
 pub async fn poll(config: &State<Config>, conn: Database) -> Result<(), Error> {
     let client = reqwest::Client::new();

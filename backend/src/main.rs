@@ -9,6 +9,7 @@ mod error;
 mod id;
 mod receive;
 mod sentry;
+mod sign;
 mod storage;
 
 use common::{DownloadResult, MessageData, SealedMessage};
@@ -26,8 +27,11 @@ use crate::config::Config;
 use crate::email::send_email;
 use crate::error::Error;
 use crate::id::Id;
-use crate::receive::{new_email, poll};
+use crate::receive::new_email;
+#[cfg(debug_assertions)]
+use crate::receive::poll;
 use crate::sentry::SentryFairing;
+use crate::sign::{sign_message, sign_result};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct PostResult {
@@ -72,11 +76,12 @@ async fn api(
         let from = request.from.clone();
         let subject = request.subject.clone();
         let to_copy = message.to.clone();
+        let signature = request.signature.clone();
 
         conn.run(move |c| {
             c.execute(
-                "INSERT INTO messages (id, from_address, to_address, subject) VALUES ($1, $2, $3, $4)",
-                &[&row_id, &from, &to_copy, &subject],
+                "INSERT INTO messages (id, from_address, to_address, subject, signature) VALUES ($1, $2, $3, $4, $5)",
+                &[&row_id, &from, &to_copy, &subject, &signature],
             )
         }).await?;
 
@@ -111,11 +116,11 @@ async fn download(
     id: Id,
 ) -> Result<Json<DownloadResult>, Error> {
     let id_clone = id.clone();
-    if let Some((from, to, subject)) = conn
+    if let Some((from, to, subject, signature)) = conn
         .run(move |c| {
             let result = c
                 .query(
-                    "SELECT from_address, to_address, subject FROM messages WHERE id = $1",
+                    "SELECT from_address, to_address, subject, signature FROM messages WHERE id = $1",
                     &[&id.to_string()],
                 )
                 .unwrap();
@@ -124,6 +129,7 @@ async fn download(
                     row.get::<_, String>(0),
                     row.get::<_, String>(1),
                     row.get::<_, String>(2),
+                    row.get::<_, Option<String>>(3),
                 )
             })
         })
@@ -134,6 +140,7 @@ async fn download(
             from,
             to,
             subject,
+            signature,
             content: config.storage.retrieve_url(&id_clone.to_string()).await?,
         }))
     } else {
@@ -164,10 +171,25 @@ fn boot() -> _ {
 }
 
 fn setup(rocket: rocket::Rocket<rocket::Build>) -> rocket::Rocket<rocket::Build> {
-    rocket
+    let rocket = rocket
         .attach(Database::fairing())
         .attach(AdHoc::config::<Config>())
-        .mount("/", routes![api, download, poll, new_email, serve_storage])
+        .mount(
+            "/",
+            routes![
+                api,
+                download,
+                new_email,
+                serve_storage,
+                sign_message,
+                sign_result
+            ],
+        );
+
+    #[cfg(debug_assertions)]
+    let rocket = rocket.mount("/", routes![poll]);
+
+    rocket
 }
 
 #[cfg(test)]
@@ -275,6 +297,8 @@ from_fallback = "test@example.com"
 storage_type = "gcs"
 storage_location = "tguard_test"
 allowed_attributes = ["pbdf.sidn-pbdf.email.email"]
+allowed_signing_attributes = ["pbdf.sidn-pbdf.email.email"]
+irmaserver = "http://127.0.0.1:8088"
 maximum_file_size = 32767
 
 [databases]
@@ -329,6 +353,7 @@ db = {{ url = "{}" }}
             to: "to@example.com".to_string(),
             from: "from@example.com".to_string(),
             subject: "Example subject".to_string(),
+            signature: None,
             content: result.content.clone(),
         };
 

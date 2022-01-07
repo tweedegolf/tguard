@@ -9,7 +9,6 @@ use rand::Rng;
 use common::{AttributeValue, RecipientMessage, SealedMessage};
 
 use crate::js_functions::{decrypt, encrypt};
-use crate::mime::convert_to_mime;
 use crate::types::{FormData, Recipient};
 
 fn derive_identity(to: &Recipient, timestamp: u64) -> Option<Identity> {
@@ -33,7 +32,11 @@ fn derive_identity(to: &Recipient, timestamp: u64) -> Option<Identity> {
     Some(Identity::derive(&buf))
 }
 
-pub async fn seal(public_key: String, form: &FormData) -> Option<Vec<RecipientMessage>> {
+pub async fn seal(
+    public_key: String,
+    form: &FormData,
+    message: String,
+) -> Option<Vec<RecipientMessage>> {
     let b: [u8; 25056] = base64::decode(public_key).ok()?.try_into().ok()?;
     let pk = Option::from(ibe::kiltz_vahlis_one::PublicKey::from_bytes(&b))?;
 
@@ -48,7 +51,7 @@ pub async fn seal(public_key: String, form: &FormData) -> Option<Vec<RecipientMe
         let (c, k) = ibe::kiltz_vahlis_one::encrypt(&pk, &derived, &mut rng);
         let iv: [u8; 16] = rng.gen();
 
-        let packed = convert_to_mime(form);
+        let packed = message.clone();
 
         let ct = encrypt(packed.clone(), &k.to_bytes(), &iv).await;
         let ct = Uint8Array::new(&ct);

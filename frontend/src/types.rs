@@ -50,6 +50,7 @@ impl Default for FormData {
 pub struct File {
     pub filename: String,
     pub content: Vec<u8>,
+    pub mimetype: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -60,4 +61,5 @@ pub struct ReceivedData {
     pub message: String,
     pub attachments: Vec<File>,
     pub attributes: Vec<AttributeValue>,
+    pub signed: bool,
 }

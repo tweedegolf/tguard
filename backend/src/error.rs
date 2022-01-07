@@ -10,6 +10,8 @@ pub enum Error {
     EmailAddress(#[from] lettre::address::AddressError),
     #[error("Database error: {0}")]
     Database(#[from] postgres::Error),
+    #[error("IRMA error: {0}")]
+    Irma(#[from] irma::Error),
     #[error("Invalid request: {0}")]
     Validation(#[from] validator::ValidationErrors),
     #[error("Invalid attribute")]

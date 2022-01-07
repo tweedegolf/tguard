@@ -41,7 +41,7 @@ services:
             ROCKET_MAILGUN_MESSAGE_URL_PREFIX: "https://storage.eu.mailgun.net/v3/"
             ROCKET_DATABASES: '{db={url="postgres://tguard@psql:5432/tguard"}}'
             ROCKET_ALLOWED_ATTRIBUTES: '["pbdf.sidn-pbdf.email.email","pbdf.gemeente.address.city","pbdf.gemeente.personalData.over18","pbdf.gemeente.address.houseNumber"]'
-            ROCKET_MAXIMUM_FILE_SIZE: 32768
+            ROCKET_MAXIMUM_FILE_SIZE: 2621440
             RUST_LOG: debug
         networks: [default]
 
@@ -55,6 +55,27 @@ services:
             TZ: Europe/Amsterdam
             NGINX_ENTRYPOINT_QUIET_LOGS: 1
         ports: ["127.0.0.1:80:80"]
+        networks: [default]
+
+    sigverify:
+        image: golang:latest
+        user: "$USER_ID:$GROUP_ID"
+        volumes:
+            - ".:/app"
+        expose: [8080]
+        command: [ "go", "run", "." ]
+        working_dir: /app/sigverify
+        environment:
+            SCHEMES_DIR: /app/irma_configuration
+        networks: [default]
+
+    irmaserver:
+        build:
+            context: .
+            dockerfile: ./docker/irma.Dockerfile
+        user: "$USER_ID:$GROUP_ID"
+        expose: [8088]
+        command: [ "server", "-u", "http://${IP_ADDRESS:-127.0.0.1}" ]
         networks: [default]
 
     psql:

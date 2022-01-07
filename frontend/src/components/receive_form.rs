@@ -1,12 +1,14 @@
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::{html, Component, ComponentLink, Html, Properties, ShouldRender};
 
-use crate::actions::download_and_decrypt;
-use crate::components::common::{
-    alert::{Alert, AlertKind},
-    loader::Loader,
-};
 use crate::types::{File, ReceivedData};
+use crate::{
+    actions::download_and_decrypt,
+    components::common::{
+        alert::{Alert, AlertKind},
+        loader::Loader,
+    },
+};
 
 #[derive(Properties, Clone, PartialEq, Debug)]
 pub struct Props {
@@ -101,18 +103,26 @@ impl Component for ReceiveForm {
                     html!{
                         <>
                             <dl>
-                              <dt>{"Sender:"}</dt>
-                              <dd>{&self.data.from}</dd>
-                              <dt>{"To:"}</dt>
-                              <dd>{&self.data.to}</dd>
-                              <dt>{"Subject:"}</dt>
-                              <dd>{&self.data.subject}</dd>
-                              <dt>{"Message:"}</dt>
-                              <dd>
-                                <pre>
-                                  {&self.data.message}
-                                </pre>
-                              </dd>
+                                <dt>{"Sender:"}</dt>
+                                <dd>{&self.data.from}</dd>
+                                <dt>{"To:"}</dt>
+                                <dd>{&self.data.to}</dd>
+                                <dt>{"Subject:"}</dt>
+                                <dd>{&self.data.subject}</dd>
+                                { if self.data.signed {
+                                    html!{
+                                      <dt>{"Signed Message:"}</dt>
+                                    }
+                                } else {
+                                    html!{
+                                        <dt>{"Message:"}</dt>
+                                    }
+                                }}
+                                <dd>
+                                    <pre>
+                                        {&self.data.message}
+                                    </pre>
+                                </dd>
                             </dl>
                             { if !self.data.attachments.is_empty() {
                                 html!{
@@ -121,9 +131,9 @@ impl Component for ReceiveForm {
                             } else {
                                 html!{}
                             }}
-                            <ul>
-                                { for self.data.attachments.iter().map(|f| Self::view_file(f)) }
-                            </ul>
+                            <table class="files">
+                                { for self.data.attachments.iter().map(Self::view_file) }
+                            </table>
                         </>
                     }
                 }
@@ -138,16 +148,23 @@ impl ReceiveForm {
         let content = base64::encode(&data.content);
 
         html! {
-            <li>
-                <a
-                    class="button outlined"
-                    download={data.filename.clone()}
-                    href={ format!("data:application/octet-stream;base64,{}", content) }
-                    target="_blank"
-                >
-                    {(&data.filename).to_string()}
-                </a>
-            </li>
+            <tr>
+                <td>
+                    <p class="filename">
+                        {data.filename.clone()}
+                    </p>
+                </td>
+                <td class="actions">
+                    <a
+                        class="button outlined"
+                        download={data.filename.clone()}
+                        href={format!("data:{};base64,{}", data.mimetype, content)}
+                        target="_blank"
+                    >
+                            {"download"}
+                    </a>
+                </td>
+            </tr>
         }
     }
 }

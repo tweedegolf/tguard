@@ -24,7 +24,7 @@ export async function encrypt(message, key, iv) {
   }
 }
 
-export async function irma(session) {
+export async function irma_get_usk(session) {
   const identity = { type: session.attribute_identifier, value: session.attribute_value };
 
   try {
@@ -52,6 +52,36 @@ export async function irma(session) {
     });
 
     return usk;
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
+}
+
+export async function irma_sign(hash) {
+  try {
+    const signature = await window.startIrma({
+      maxAge: 300,
+      start: {
+        url: (o) => `${o.url}/api/sign`,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+         hash,
+         attributes: ["pbdf.sidn-pbdf.email.email"],
+        }),
+      },
+      state: { serverSentEvents: false },
+      mapping: {
+        sessionPtr: (r) => r.sessionPtr,
+      },
+      result: {
+        url: (o, { sessionToken }) => `${o.url}/api/sign_result?session=${sessionToken}`,
+        parseResponse: (r) => r.text(),
+      },
+    });
+
+    return signature;
   } catch (e) {
     console.error(e);
     return null;

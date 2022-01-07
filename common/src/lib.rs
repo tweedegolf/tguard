@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
@@ -10,6 +12,8 @@ pub struct DownloadResult {
     pub from: String,
     pub to: String,
     pub subject: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
     pub content: String,
 }
 
@@ -49,4 +53,13 @@ pub struct MessageData {
     pub subject: String,
     #[validate]
     pub recipient_messages: Vec<RecipientMessage>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[validate(length(max = 4096))]
+    pub signature: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SignResult {
+    pub signature: serde_json::Value,
+    pub attributes: HashMap<String, String>,
 }

@@ -2,7 +2,7 @@
 
 TGuard is a web-based sending and decrypting service for [irmaseal](https://github.com/encryption4all/irmaseal)-encrypted messages that is currently in development at Tweede Golf. TGuard utilizes [IRMA](https://irma.app/) to allow an user to encrypt messages client-side. These messages can be decrypted client-side once the receiver proofs to be the owner of attributes the message was encrypted for, like an e-mail address, name or an identifying number.
 
-![Screenshot of TGuard](screen.jpg)
+[Screenshot of TGuard](screen.jpg)
 
 ## Running TGuard
 
@@ -14,6 +14,7 @@ The easyest way to start developing with this software is using docker-compose. 
 
 Currently we use the following software versions for this project:
 
+- Golang version 1.17
 - Rust version 1.57 (see [rust:bullseye](https://hub.docker.com/_/rust))
 - NGINX version 1.21
 - Postgres version 12

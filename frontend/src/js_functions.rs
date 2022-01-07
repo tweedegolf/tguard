@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use common::DownloadResult;
 use js_sys::Uint8Array;
 use serde::{Deserialize, Serialize};
@@ -7,6 +9,8 @@ use wasm_bindgen::{
 };
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, Response};
+
+use crate::actions::SendError;
 
 #[derive(Deserialize, Serialize)]
 pub struct IrmaSession {
@@ -20,7 +24,8 @@ extern "C" {
     pub async fn encrypt(message: String, key: &[u8], iv: &[u8]) -> JsValue;
     pub async fn decrypt(ciphertext: &[u8], key: &[u8], iv: &[u8]) -> JsValue;
     pub async fn decrypt_cfb_hmac(ciphertext: &[u8], key: &[u8], iv: &[u8]) -> JsValue;
-    pub async fn irma(session: JsValue) -> JsValue;
+    pub async fn irma_get_usk(session: JsValue) -> JsValue;
+    pub async fn irma_sign(hash: String) -> JsValue;
 }
 
 pub async fn download_bytes(url: &str) -> Option<Vec<u8>> {
@@ -50,12 +55,40 @@ pub async fn get_public_key() -> Option<String> {
     )
 }
 
-pub async fn send_message(body: &str) -> Option<()> {
+pub async fn send_message(body: &str) -> Result<(), SendError> {
     let mut opts = RequestInit::new();
     opts.method("POST");
     opts.body(Some(&body.into()));
 
-    let request = Request::new_with_str_and_init("/api", &opts).ok()?;
+    let request = Request::new_with_str_and_init("/api", &opts).map_err(|_| SendError::NotSent)?;
+
+    request
+        .headers()
+        .set("Content-Type", "application/json")
+        .map_err(|_| SendError::NotSent)?;
+
+    let window = web_sys::window().ok_or(SendError::NotSent)?;
+    let response: Response = JsFuture::from(window.fetch_with_request(&request))
+        .await
+        .map_err(|_| SendError::NotSent)?
+        .dyn_into()
+        .map_err(|_| SendError::NotSent)?;
+
+    if response.status() >= 200 && response.status() < 300 {
+        Ok(())
+    } else if response.status() == 413 {
+        Err(SendError::TooLarge)
+    } else {
+        Err(SendError::NotSent)
+    }
+}
+
+pub async fn verify_signature(signature: &str) -> Option<HashMap<String, String>> {
+    let mut opts = RequestInit::new();
+    opts.method("POST");
+    opts.body(Some(&signature.into()));
+    let request = Request::new_with_str_and_init("/api/verify", &opts).ok()?;
+
     request
         .headers()
         .set("Content-Type", "application/json")
@@ -68,7 +101,9 @@ pub async fn send_message(body: &str) -> Option<()> {
         .dyn_into()
         .ok()?;
     if response.status() >= 200 && response.status() < 300 {
-        Some(())
+        let data = JsFuture::from(response.array_buffer().ok()?).await.ok()?;
+        let data = Uint8Array::new(&data).to_vec();
+        Some(serde_json::from_slice(&data).ok()?)
     } else {
         None
     }

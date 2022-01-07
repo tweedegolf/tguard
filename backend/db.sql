@@ -5,5 +5,6 @@ CREATE TABLE messages (
   from_address VARCHAR NOT NULL,
   to_address VARCHAR NOT NULL,
   subject VARCHAR NOT NULL,
+  signature VARCHAR,
   created DATE DEFAULT CURRENT_DATE
 );

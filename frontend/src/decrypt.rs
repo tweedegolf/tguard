@@ -80,7 +80,7 @@ async fn decrypt_irmaseal_file(sealed: &IrmaSealedMessage) -> Result<Vec<u8>, De
         Err(_) => return Err(DecryptError::Failed),
     };
 
-    let usk = match crate::js_functions::irma(session).await.as_string() {
+    let usk = match crate::js_functions::irma_get_usk(session).await.as_string() {
         Some(s) => s,
         None => return Err(DecryptError::Failed),
     };

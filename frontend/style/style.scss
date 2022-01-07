@@ -141,7 +141,6 @@ input:not([type=checkbox]), textarea, dd, select {
   width: 100%;
   background: white;
   border: 1px solid $gray-dark;
-  font-family: 'Arvo', serif;
   margin: 0.5rem 0;
   font-size: 1.2rem;
   padding: 0.5rem;
@@ -204,6 +203,12 @@ button {
   }
 }
 
+.decrypted {
+  border-top: 1px solid $gray-dark;
+  margin-top: 2rem;
+  padding-top: 1rem
+}
+
 .attributes,
 .files {
   width: 100%;
@@ -213,9 +218,11 @@ button {
     min-width: 310px;
   }
 
-  td:not(:last-child),
-  th:not(:last-child) {
-    padding-right: 0.75rem;
+  @media (min-width: $breakpoint) {
+    td:not(:last-child),
+    th:not(:last-child) {
+      padding-right: 0.75rem;
+    }
   }
 
   td.actions {
@@ -240,6 +247,15 @@ button {
       font-size: 0.9rem;
       display: flex;
       align-items: center;
+    }
+  }
+
+  @media (max-width: $breakpoint) {
+    td {
+      display: block;
+    }
+    th:not(:first-child) {
+      display: none;
     }
   }
 }
@@ -281,6 +297,15 @@ button {
     color: $blue;
     background: transparent;
     border: 1px solid $blue;
+    margin: 0.5rem 0.5rem 0 0;
+
+    &.delete {
+      display: none;
+    }
+  }
+
+  div.delete {
+    display: none;
   }
 
   label {
@@ -288,14 +313,35 @@ button {
     color: #666;
     font-size: 0.9rem;
     margin-top: 0;
+  }
+
+  @media (max-width: $breakpoint) {
+    display: block;
+
+    label {
+      margin-top: 0.5rem;
+    }
 
     button {
-      margin-left: 0.5rem;
+      &.delete {
+        display: inline-block;
+      }
+    }
+
+    div.delete {
+      display: block;
     }
   }
 }
 
 button {
+  svg {
+    display: inline-block;
+    height: 1rem;
+    margin-right: 0.75rem;
+    vertical-align: middle;
+  }
+
   &.delete {
     color: darken($red, 40%);
     background: transparent;

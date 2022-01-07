@@ -11,6 +11,7 @@ common = { path = "../common" }
 cloud-storage = { version = "0.10", features = ["global-client"] }
 dotenv = "0.15.0"
 env_logger = "0.9.0"
+irma = "0.2.1"
 lettre = { version = "0.10.0-rc.4", features = ["builder"] }
 log = "0.4.14"
 postcard = "0.5.1"

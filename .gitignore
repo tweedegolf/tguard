@@ -6,3 +6,5 @@ frontend/node_modules/
 target/
 .env
 analyzer_target/
+irma_configuration
+sigverify/sigverify

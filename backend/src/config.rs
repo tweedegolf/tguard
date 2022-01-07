@@ -1,6 +1,7 @@
 use crate::storage::{CloudStorage, LocalStorage, Storage};
 use std::{collections::HashSet, convert::TryFrom, iter::FromIterator};
 
+use irma::{IrmaClient, IrmaClientBuilder};
 use lettre::{message::Mailbox, transport::smtp::authentication::Credentials, SmtpTransport};
 use log::warn;
 use serde::Deserialize;
@@ -27,6 +28,9 @@ struct RawConfig {
     storage_type: StorageType,
     storage_location: String,
     allowed_attributes: Vec<String>,
+    allowed_signing_attributes: Vec<String>,
+    irmaserver: String,
+    irmaserver_token: Option<String>,
     maximum_file_size: usize,
 }
 
@@ -42,6 +46,8 @@ pub struct Config {
     pub from_fallback: String,
     pub storage: Box<dyn Storage>,
     pub allowed_attributes: HashSet<String>,
+    pub allowed_signing_attributes: HashSet<String>,
+    pub irmaserver: IrmaClient,
     pub maximum_file_size: usize,
 }
 
@@ -65,6 +71,13 @@ impl TryFrom<RawConfig> for Config {
             }
         };
 
+        let irmaserver = match v.irmaserver_token {
+            Some(token) => IrmaClientBuilder::new(&v.irmaserver)?
+                .token_authentication(token)
+                .build(),
+            None => IrmaClient::new(&v.irmaserver)?,
+        };
+
         let mail_user: Mailbox = v.mail_user.parse()?;
         Ok(Config {
             storage: match v.storage_type {
@@ -84,6 +97,10 @@ impl TryFrom<RawConfig> for Config {
             mailgun_message_url_prefix: v.mailgun_message_url_prefix,
             from_fallback: v.from_fallback,
             allowed_attributes: HashSet::from_iter(v.allowed_attributes.into_iter()),
+            allowed_signing_attributes: HashSet::from_iter(
+                v.allowed_signing_attributes.into_iter(),
+            ),
+            irmaserver,
             maximum_file_size: v.maximum_file_size,
         })
     }

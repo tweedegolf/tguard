@@ -1,7 +1,7 @@
 use common::AttributeValue;
 use yew::prelude::*;
 
-use crate::attributes::{attribute_type, AttributeType};
+use crate::attributes::{attribute_label, attribute_type, AttributeType};
 
 #[derive(Clone, Debug, PartialEq, Properties)]
 pub struct Props {
@@ -47,6 +47,7 @@ impl Component for AttributeInput {
     }
 
     fn view(&self) -> Html {
+        let label = attribute_label(&self.props.attribute.identifier).to_string();
         match attribute_type(&self.props.attribute.identifier) {
             AttributeType::Boolean => html! {
                 <p>{self.props.attribute.value.clone()}</p>
@@ -57,7 +58,8 @@ impl Component for AttributeInput {
                     name="attr"
                     maxlength="512"
                     required=true
-                    disabled={self.props.disabled}
+                    placeholder=label
+                    disabled=self.props.disabled
                     value=self.props.attribute.value.clone()
                     class="inline"
                     oninput=self.link.callback(|event:InputData| Self::Message::UpdateInput(event.value))
@@ -69,7 +71,8 @@ impl Component for AttributeInput {
                     name="attr"
                     maxlength="512"
                     required=true
-                    disabled={self.props.disabled}
+                    placeholder=label
+                    disabled=self.props.disabled
                     value=self.props.attribute.value.clone()
                     class="inline"
                     oninput=self.link.callback(|event:InputData| Self::Message::UpdateInput(event.value))

@@ -1,12 +1,20 @@
 use std::collections::HashMap;
 use wasm_bindgen_futures::spawn_local;
-use yew::services::reader::{File, FileData, ReaderService, ReaderTask};
-use yew::{html, ChangeData, Component, ComponentLink, Html, ShouldRender};
+use yew::{
+    html,
+    services::reader::{File, FileData, ReaderService, ReaderTask},
+    ChangeData, Component, ComponentLink, Html, ShouldRender,
+};
 
-use crate::components::common::alert::{Alert, AlertKind};
-use crate::decrypt::{decrypt_file, DecryptError};
+use crate::{
+    components::common::alert::{Alert, AlertKind},
+    decrypt::{decrypt_file, DecryptError},
+    mime::convert_from_mime,
+    types::File as FileType,
+};
 
 type FileName = String;
+type Message = String;
 
 #[derive(PartialEq)]
 pub enum UploadFormStatus {
@@ -18,7 +26,7 @@ pub enum UploadFormStatus {
 
 pub enum UploadMsg {
     Loaded((FileName, FileData)),
-    Decrypted((String, Vec<u8>)),
+    Decrypted((FileName, String, Vec<FileType>)),
     DecryptionFailed(DecryptError),
     AddFiles(Vec<File>),
 }
@@ -26,8 +34,14 @@ pub enum UploadMsg {
 pub struct Upload {
     link: ComponentLink<Self>,
     status: UploadFormStatus,
-    files: Vec<FileData>,
+    decrypted: Vec<(FileName, Message, Vec<FileType>)>,
     tasks: HashMap<FileName, ReaderTask>,
+}
+
+fn convert_and_parse(raw: &[u8]) -> Option<(String, Vec<FileType>)> {
+    let plain = String::from_utf8(raw.to_vec()).ok()?;
+    let converted = convert_from_mime(&plain)?;
+    Some(converted)
 }
 
 impl Component for Upload {
@@ -39,7 +53,7 @@ impl Component for Upload {
             link,
             status: UploadFormStatus::Initial,
             tasks: HashMap::default(),
-            files: vec![],
+            decrypted: vec![],
         }
     }
 
@@ -49,23 +63,32 @@ impl Component for Upload {
                 self.status = UploadFormStatus::Error(e);
                 true
             }
-            Self::Message::Decrypted((file_name, content)) => {
-                self.files.push(FileData {
-                    name: file_name,
-                    content,
-                });
+            Self::Message::Decrypted(message) => {
+                self.decrypted.push(message);
                 self.status = UploadFormStatus::Success;
                 true
             }
-            Self::Message::Loaded((file_name, file)) => {
+            Self::Message::Loaded((filename, file)) => {
                 self.status = UploadFormStatus::Decrypting;
-                self.tasks.remove(&file_name);
+                self.tasks.remove(&filename);
                 let link = self.link.clone();
 
                 spawn_local(async move {
                     match decrypt_file(&file).await {
                         Ok(content) => {
-                            link.send_message(Self::Message::Decrypted((file_name, content)))
+                            let (message, attachments) = convert_and_parse(&content).unwrap_or((
+                                String::new(),
+                                vec![FileType {
+                                    filename: filename.clone(),
+                                    mimetype: "application/octet-stream".to_owned(),
+                                    content,
+                                }],
+                            ));
+                            link.send_message(Self::Message::Decrypted((
+                                filename,
+                                message,
+                                attachments,
+                            )))
                         }
                         Err(e) => link.send_message(Self::Message::DecryptionFailed(e)),
                     };
@@ -75,15 +98,15 @@ impl Component for Upload {
             }
             Self::Message::AddFiles(files) => {
                 for file in files.into_iter() {
-                    let file_name = file.name();
+                    let filename = file.name();
                     let task = {
-                        let file_name = file_name.clone();
+                        let filename = filename.clone();
                         let callback = self
                             .link
-                            .callback(move |data| Self::Message::Loaded((file_name.clone(), data)));
+                            .callback(move |data| Self::Message::Loaded((filename.clone(), data)));
                         ReaderService::read_file(file, callback).unwrap()
                     };
-                    self.tasks.insert(file_name, task);
+                    self.tasks.insert(filename, task);
                 }
                 true
             }
@@ -126,33 +149,72 @@ impl Component for Upload {
                     })
                     />
                 </div>
-                { if !self.files.is_empty() {
+                { if !self.decrypted.is_empty() {
                     html!{
-                        <label>{"Download decrypted files:"}</label>
+                        { for self.decrypted.iter().map(Self::view_decrypted) }
                     }
                 } else {
                     html!{}
                 }}
-                <table class="files">
-                    { for self.files.iter().map(|f| Self::view_file(f)) }
-                </table>
             </>
         }
     }
 }
 
 impl Upload {
-    fn view_file(data: &FileData) -> Html {
+    fn view_decrypted(decrypted: &(FileName, Message, Vec<FileType>)) -> Html {
+        html! {
+            <div class="decrypted">
+                <dl>
+                    <dt>{"File name:"}</dt>
+                    <dd>{decrypted.0.clone()}</dd>
+                    {if decrypted.1.is_empty() {
+                        html!{}
+                    } else {
+                        html!{
+                            <>
+                                <dt>{"Message:"}</dt>
+                                <dd>
+                                    <pre>
+                                      {decrypted.1.clone()}
+                                    </pre>
+                                </dd>
+                            </>
+                        }
+                    }}
+                </dl>
+                <label>
+                    {if decrypted.1.is_empty() {
+                        "Attachments:"
+                    } else {
+                        "Decrypted:"
+                    }}
+                </label>
+                <table class="files">
+                    { for decrypted.2.iter().map(Self::view_file) }
+                </table>
+            </div>
+        }
+    }
+
+    fn view_file(data: &FileType) -> Html {
+        let content = base64::encode(&data.content);
+
         html! {
             <tr>
                 <td>
                     <p class="filename">
-                        {(&data.name).to_string()}
+                        {data.filename.clone()}
                     </p>
                 </td>
                 <td class="actions">
-                    <a class="button outlined" download={data.name.clone()} href={ format!("data:text/plain;base64,{}", base64::encode({ &data.content })) } target="_blank">
-                        {"download"}
+                    <a
+                        class="button outlined"
+                        download={data.filename.clone()}
+                        href={format!("data:{};base64,{}", data.mimetype, content)}
+                        target="_blank"
+                    >
+                            {"download"}
                     </a>
                 </td>
             </tr>

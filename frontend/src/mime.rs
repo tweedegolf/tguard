@@ -23,9 +23,13 @@ pub fn convert_to_mime(form: &FormData) -> String {
         .singlepart(text);
 
     for attachment in &form.attachments {
+        // try to guess the mime type from the file name
+        let mime_type = mime_guess::from_path(&attachment.name)
+            .first_raw()
+            .unwrap_or("application/octet-stream");
         let part = Attachment::new(attachment.name.clone()).body(
             attachment.content.clone(),
-            ContentType::parse("application/octet-stream").unwrap(),
+            ContentType::parse(mime_type).unwrap(),
         );
         content = content.singlepart(part.clone());
     }
@@ -33,66 +37,61 @@ pub fn convert_to_mime(form: &FormData) -> String {
     String::from_utf8(content.formatted()).unwrap()
 }
 
-pub fn convert_from_mime(message: &str) -> Result<(String, Vec<File>), ()> {
-    let email = Message::parse(message.as_bytes()).unwrap();
+// functionality to parse a raw mime email message
+fn get_filename<'a, T>(part: &T) -> Option<String>
+where
+    T: MimeHeaders<'a>,
+{
+    Some(
+        part.get_content_disposition()?
+            .get_attribute("filename")?
+            .to_string(),
+    )
+}
+
+fn get_content_type<'a, T>(part: &T) -> Option<String>
+where
+    T: MimeHeaders<'a>,
+{
+    let content_type = part.get_content_type()?;
+    match content_type.get_subtype() {
+        Some(s) => Some(format!("{}/{}", content_type.get_type(), s)),
+        None => Some(content_type.get_type().to_string()),
+    }
+}
+
+fn parse_attachment(attachment: &MessagePart) -> Option<File> {
+    match attachment {
+        MessagePart::Text(m) => Some(File {
+            filename: get_filename(m).unwrap_or_else(|| "attachment.txt".to_owned()),
+            content: m.get_contents().to_vec(),
+            mimetype: get_content_type(m).unwrap_or_else(|| "text/plain".to_owned()),
+        }),
+        MessagePart::Binary(m) => Some(File {
+            filename: get_filename(m).unwrap_or_else(|| "attachment.bin".to_owned()),
+            content: m.get_contents().to_vec(),
+            mimetype: get_content_type(m).unwrap_or_else(|| "application/octet-stream".to_owned()),
+        }),
+        // Nested RFC5322/RFC822 message, add it as an attachment
+        MessagePart::Message(m) => Some(File {
+            filename: get_filename(m).unwrap_or_else(|| "attachment.eml".to_owned()),
+            content: m.get_contents().to_vec(),
+            mimetype: "message/rfc822".to_owned(),
+        }),
+        _ => None,
+    }
+}
+
+pub fn convert_from_mime(message: &str) -> Option<(String, Vec<File>)> {
+    let email = Message::parse(message.as_bytes())?;
 
     let mut attachments: Vec<File> = vec![];
     for attachment in email.get_attachments() {
-        match attachment {
-            // add attachments of type Text as .txt file
-            MessagePart::Text(m) => attachments.push(File {
-                filename: "attachment.txt".to_string(),
-                content: m.get_contents().to_vec(),
-            }),
-            MessagePart::Binary(m) => {
-                if let Some(name) = m
-                    .get_content_disposition()
-                    .unwrap()
-                    .get_attribute("filename")
-                {
-                    attachments.push(File {
-                        filename: name.to_string(),
-                        content: m.get_contents().to_vec(),
-                    })
-                } else {
-                    attachments.push(File {
-                        filename: "attachment.txt".to_string(),
-                        content: m.get_contents().to_vec(),
-                    })
-                }
-            }
-            MessagePart::InlineBinary(m) => {
-                if let Some(name) = m
-                    .get_content_disposition()
-                    .unwrap()
-                    .get_attribute("filename")
-                {
-                    attachments.push(File {
-                        filename: name.to_string(),
-                        content: m.get_contents().to_vec(),
-                    })
-                } else {
-                    attachments.push(File {
-                        filename: "attachment.txt".to_string(),
-                        content: m.get_contents().to_vec(),
-                    })
-                }
-            }
-            MessagePart::Message(m) => {
-                // this is a nested mime message, add it as an attachment
-                attachments.push(File {
-                    filename: "nested.txt".to_string(),
-                    content: m
-                        .get_text_body(0)
-                        .unwrap()
-                        .to_string()
-                        .as_bytes()
-                        .to_owned(),
-                })
-            }
-        };
+        if let Some(a) = parse_attachment(attachment) {
+            attachments.push(a)
+        }
     }
 
-    let body = email.get_text_body(0).unwrap().to_string();
-    Ok((body, attachments))
+    let body = email.get_text_body(0)?.to_string();
+    Some((body, attachments))
 }
